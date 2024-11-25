@@ -3,6 +3,15 @@
 #include <stdlib.h>
 #include "hist-equ.h"
 
+#define CHECK_CUDA_ERROR(call) \
+    do { \
+        cudaError_t err = call; \
+        if (err != cudaSuccess) { \
+            fprintf(stderr, "CUDA error in %s at line %d: %s\n", __FILE__, __LINE__, cudaGetErrorString(err)); \
+            goto cleanup; \
+        } \
+    } while (0)
+
 void run_cpu_gray_test(PGM_IMG img_in, char *out_filename);
 
 int main(int argc, char *argv[]){
@@ -12,10 +21,35 @@ int main(int argc, char *argv[]){
 		printf("Run with input file name and output file name as arguments\n");
 		exit(1);
 	}
+
+    unsigned char *d_img_in;
+    int *d_hist_out;
+
+    CHECK_CUDA_ERROR(cudaMalloc((void **)&d_img_in, img_size * sizeof(unsigned char)));
+    CHECK_CUDA_ERROR(cudaMalloc((void **)&d_hist_out, nbr_bin * sizeof(int)));
+
+    // Initialize device histogram to 0
+    CHECK_CUDA_ERROR(cudaMemset(d_hist_out, 0, nbr_bin * sizeof(int)));
+
+    // Copy image to device
+    CHECK_CUDA_ERROR(cudaMemcpy(d_img_in, img_in, img_size * sizeof(unsigned char), cudaMemcpyHostToDevice));
+
+    // Define block and grid sizes
+    int threads_per_block = 256;
+    int blocks_per_grid = (img_size + threads_per_block - 1) / threads_per_block;
+
+    size_t shared_mem_size = nbr_bin * sizeof(int);
+    histogramKernel<<<blocks_per_grid, threads_per_block, shared_mem_size>>>(d_hist_out, d_img_in, img_size, nbr_bin);
 	
+    CHECK_CUDA_ERROR(cudaMemcpy(hist_out, d_hist_out, nbr_bin * sizeof(int), cudaMemcpyDeviceToHost));
+    // Free device memory
+
     printf("Running contrast enhancement for gray-scale images.\n");
     img_ibuf_g = read_pgm(argv[1]);
     run_cpu_gray_test(img_ibuf_g, argv[2]);
+clean_up:
+    if(d_img_in)cudaFree(d_img_in);
+    if(d_hist_out)cudaFree(d_hist_out);
     free_pgm(img_ibuf_g);
 
 	return 0;
@@ -25,7 +59,7 @@ int main(int argc, char *argv[]){
 
 void run_cpu_gray_test(PGM_IMG img_in, char *out_filename)
 {
-    unsigned int timer = 0;
+    // unsigned int timer = 0;
     PGM_IMG img_obuf;
     
     
