@@ -1,42 +1,31 @@
-# Compilers
 NVCC = nvcc
-CC = gcc
+CFLAGS = -g -O4
 
-# CUDA Paths
-CUDA_PATH = /usr/local/cuda
-CUDA_LIBS = -L$(CUDA_PATH)/lib64 -lcudart
-INCLUDES = -I$(CUDA_PATH)/include
+# TARGET = Convolution2D
 
-# Flags
-CFLAGS = -Wall -O2
-NVCCFLAGS = -g -O4 $(INCLUDES)
+# SRC = Convolution2D.cu
 
-# Target
-TARGET = histogram_equalization
+TARGET = main
 
-# Source Files
-CUDA_SRCS = kernel.cu
-C_SRCS = main.c histogram-equalization.c contrast-enhancement.c
+SRC = main.cu histogram-equalization.cu contrast-enhancement.cu
+HEADERS = hist-equ.h
 
-# Object Files
-C_OBJS = $(C_SRCS:.c=.o)
-CUDA_OBJS = $(CUDA_SRCS:.cu=.o)
+$(TARGET): $(SRC)
+	$(NVCC) $(CFLAGS) -o $(TARGET) $(SRC)
 
-# Build Target
-$(TARGET): $(C_OBJS) $(CUDA_OBJS)
-	$(CC) $(CFLAGS) -o $(TARGET) $(C_OBJS) $(CUDA_OBJS) $(CUDA_LIBS)
+#LOG_FILE = experiment_12.log
 
-# Compile C Source Files
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-# Compile CUDA Source Files
-%.o: %.cu
-	$(NVCC) $(NVCCFLAGS) -c $< -o $@
-
-# Clean Up
+# Clean up
 clean:
-	rm -f $(TARGET) $(C_OBJS) $(CUDA_OBJS)
+	rm -f $(TARGET)
 
 
 
+experiment_12: $(TARGET)
+	@echo "Running $(TARGET) 12 times with filter radius $(FILTER_RADIUS) and image size $(IMAGE_SIZE), writing output to $(LOG_FILE)"
+	@rm -f $(LOG_FILE)
+	@for i in {1..12}; do \
+    	echo "Run $$i:" >> $(LOG_FILE); \
+    	./$(TARGET) $(FILTER_RADIUS) $(IMAGE_SIZE) >> $(LOG_FILE); \
+    	echo "" >> $(LOG_FILE); \
+    done
