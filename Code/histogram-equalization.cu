@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include "hist-equ.h"
 
+extern int error_flag;
 
 void histogram(int * hist_out, unsigned char * img_in, int img_size, int nbr_bin) {
     int i;
@@ -21,6 +22,10 @@ void histogram(int * hist_out, unsigned char * img_in, int img_size, int nbr_bin
 void histogram_equalization(unsigned char * img_out, unsigned char * img_in, 
                             int * hist_in, int img_size, int nbr_bin) {
     int *lut = (int *)malloc(sizeof(int)*nbr_bin);
+    if(!lut){
+        error_flag = 1;
+        return;
+    }
     int i, cdf, min, d, index;
 
     /* Construct the LUT by calculating the CDF */

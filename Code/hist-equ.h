@@ -5,6 +5,7 @@ typedef struct{
     int w;
     int h;
     unsigned char * img;
+    unsigned char * d_img;
 } PGM_IMG;    
 
 
