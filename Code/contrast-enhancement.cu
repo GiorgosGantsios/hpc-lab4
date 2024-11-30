@@ -16,3 +16,13 @@ PGM_IMG contrast_enhancement_g(PGM_IMG img_in)
     histogram_equalization(result.img,img_in.img,hist,result.w*result.h, 256);
     return result;
 }
+
+__global__ contrast_enhancement_g_gpu(PGM_IMG* d_img_out, PGM_IMG* d_img_in){
+    d_img_out.w = d_img_in.w;
+    d_img_out.h = d_img_in.h;
+
+    histogram_gpu();
+    __syncthreads();
+    histogram_equalization_gpu();
+    
+}

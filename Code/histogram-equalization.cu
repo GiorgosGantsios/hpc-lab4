@@ -18,6 +18,18 @@ void histogram(int * hist_out, unsigned char * img_in, int img_size, int nbr_bin
     }
 }
 
+__device__ histogram_gpu(int hist_out, unsigned char * img_in, int img_size, int nbr_bin){
+    int i = blockDim.x * blockId.x + threadId.x;
+    int stride = blockDim.x * gridDim.x;
+
+    while (i < size) {
+        int alphabet_pos = buffer[i] - 'a';
+        atomicAdd( &(histo[alphabet_pos/nbr_bin]), 1);
+        i += stride;
+    }
+}
+
+
 void histogram_equalization(unsigned char * img_out, unsigned char * img_in, 
                             int * hist_in, int img_size, int nbr_bin) {
     int *lut = (int *)malloc(sizeof(int)*nbr_bin);
