@@ -49,17 +49,14 @@ PGM_IMG contrast_enhancement_g(PGM_IMG img_in)  {
 
     err = cudaMalloc((void**)&d_hist, 256 * sizeof(int));  // Allocate memory on the GPU
 
-    hist[0] = -1;
-    printf("hist before: %d\n", hist[0]);
-    histogramGPU<<<1, 256>>>(d_hist);
+    
+    //histogramGPU<<<1, 256>>>(d_hist);
+    cudaMemset(d_hist, 0, sizeof(int) * 256);
 
-    err = cudaMemcpy(hist, d_hist, 256 * sizeof(int), cudaMemcpyDeviceToHost);  // Copy data from host to device
 
-    printf("hist after: %d\n", hist[0]);
+    err = cudaMemcpy(d_ImgIn, img_in.img, gpuResult.w * gpuResult.h * sizeof(unsigned char), cudaMemcpyHostToDevice);  // Copy data from host to device
 
-    err = cudaMemcpy(d_ImgIn, img_in.img, gpuResult.w * gpuResult.h * sizeof(int), cudaMemcpyHostToDevice);  // Copy data from host to device
-
-    histogramConstuctionGPU<<<(gpuResult.h*gpuResult.w)/1024+1, 1024>>>(d_hist, d_ImgIn, gpuResult.w, gpuResult.h);
+    histogramConstuctionGPU<<<((gpuResult.h*gpuResult.w)/1024)+1, 1024>>>(d_hist, d_ImgIn, gpuResult.w, gpuResult.h);
 
     err = cudaMemcpy(t_hist, d_hist, 256 * sizeof(int), cudaMemcpyDeviceToHost);  // Copy data from host to device
 
@@ -71,7 +68,7 @@ PGM_IMG contrast_enhancement_g(PGM_IMG img_in)  {
         printf(" %d",hist[i]);
     }
 
-    printf("GPU\n");
+    printf("\nGPU\n");
     for (int i = 0; i < 256; i++)  {
         printf(" %d",t_hist[i]);
     }

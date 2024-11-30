@@ -14,8 +14,10 @@ void histogram(int * hist_out, unsigned char * img_in, int img_size, int nbr_bin
 
     // Constructs the Histogram Vector
     for (i = 0; i < img_size; i++) {
+        //printf("CPUindex: %d, img: %d\n", i, img_in[i]);
         hist_out[img_in[i]]++;
     }
+    
 }
 
 void histogram_equalization(unsigned char * img_out, unsigned char * img_in, 
@@ -72,23 +74,10 @@ __global__ void histogramConstuctionGPU(int * hist_out, unsigned char * img_in, 
     int index = blockIdx.x*blockDim.x + threadIdx.x;
     int y = index / imageW; // row
     int x = index % imageW; // col
+    
+    //printf("GPUindex: %d, img: %d\n", index, img_in[index]);
 
     // Constructs the Histogram Vector
-    hist_out[img_in[y * imageW + x]]++;
-    __syncthreads();
+    atomicAdd(&hist_out[img_in[y * imageW + x]], 1);
+    //__syncthreads();
 }
-
-/*__global__ void convolutionRowGPU(float *d_Dst, float *d_Src, float *d_Filter, int imageW, int imageH, int filterR) {
-
-  int index = blockIdx.x*blockDim.x + threadIdx.x;
-  int y = index / imageW; // row
-  int x = index % imageW; // col
-  y += filterR;
-  x += filterR;
-  float sum = 0;
-    for(int k = -filterR; k <= filterR; k++){
-      int d = x + k;
-        sum += d_Src[y * (imageW+2*filterR) + d] * d_Filter[filterR - k];
-    }
-    d_Dst[y * (imageW + 2 * filterR) + x] = sum; 
-}*/
