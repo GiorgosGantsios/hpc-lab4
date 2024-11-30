@@ -18,18 +18,6 @@ void histogram(int * hist_out, unsigned char * img_in, int img_size, int nbr_bin
     }
 }
 
-__device__ histogram_gpu(int hist_out, unsigned char * img_in, int img_size, int nbr_bin){
-    int i = blockDim.x * blockId.x + threadId.x;
-    int stride = blockDim.x * gridDim.x;
-
-    while (i < size) {
-        int alphabet_pos = buffer[i] - 'a';
-        atomicAdd( &(histo[alphabet_pos/nbr_bin]), 1);
-        i += stride;
-    }
-}
-
-
 void histogram_equalization(unsigned char * img_out, unsigned char * img_in, 
                             int * hist_in, int img_size, int nbr_bin) {
     int *lut = (int *)malloc(sizeof(int)*nbr_bin);
@@ -39,7 +27,7 @@ void histogram_equalization(unsigned char * img_out, unsigned char * img_in,
     cdf = 0;
     min = 0;
     i = 0;
-
+    
     // Finds the first value on the Histogram that isn't 0
     while(min == 0) {
         min = hist_in[i++];
@@ -68,3 +56,39 @@ void histogram_equalization(unsigned char * img_out, unsigned char * img_in,
         img_out[i] = (unsigned char)lut[img_in[i]];
     }
 }
+
+__global__ void histogramGPU(int * hist_out) {
+    int index = threadIdx.x;
+
+    // Initialization
+    hist_out[index] = 0;
+
+    // Constructs the Histogram Vector
+    /*for (i = 0; i < img_size; i++) {
+        hist_out[img_in[i]]++;
+    }*/
+}
+__global__ void histogramConstuctionGPU(int * hist_out, unsigned char * img_in, int imageW, int imageH) {
+    int index = blockIdx.x*blockDim.x + threadIdx.x;
+    int y = index / imageW; // row
+    int x = index % imageW; // col
+
+    // Constructs the Histogram Vector
+    hist_out[img_in[y * imageW + x]]++;
+    __syncthreads();
+}
+
+/*__global__ void convolutionRowGPU(float *d_Dst, float *d_Src, float *d_Filter, int imageW, int imageH, int filterR) {
+
+  int index = blockIdx.x*blockDim.x + threadIdx.x;
+  int y = index / imageW; // row
+  int x = index % imageW; // col
+  y += filterR;
+  x += filterR;
+  float sum = 0;
+    for(int k = -filterR; k <= filterR; k++){
+      int d = x + k;
+        sum += d_Src[y * (imageW+2*filterR) + d] * d_Filter[filterR - k];
+    }
+    d_Dst[y * (imageW + 2 * filterR) + x] = sum; 
+}*/
