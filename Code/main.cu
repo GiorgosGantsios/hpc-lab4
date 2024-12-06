@@ -7,10 +7,7 @@ bool run_cpu_gray_test(PGM_IMG img_in, char *out_filename);
 bool run_GPU_gray_test(PGM_IMG img_in, char *out_filename);
 
 int main(int argc, char *argv[]){
-    cudaEvent_t startCuda, stopCuda;
-    float millisecondsTransfers = 0;
     PGM_IMG img_ibuf_g;
-    PGM_IMG img_ibuf_gpu;
     struct timespec  tv1, tv2;
     float elapsed_time_CPU;
     bool result;
@@ -30,21 +27,7 @@ int main(int argc, char *argv[]){
     }
     clock_gettime(CLOCK_MONOTONIC_RAW, &tv2);
 
-    cudaEventCreate(&startCuda);
-    cudaEventCreate(&stopCuda);
-
-    cudaEventRecord(startCuda, 0);
-
-    img_ibuf_gpu.w = img_ibuf_g.w;
-    img_ibuf_gpu.h = img_ibuf_g.h;
-
     result = run_GPU_gray_test(img_ibuf_g, argv[2]);
-
-    cudaEventRecord(stopCuda, 0);
-    cudaEventSynchronize(stopCuda);
-    cudaEventElapsedTime(&millisecondsTransfers, startCuda, stopCuda);
-
-    printf("\nGPU Execution time: %lf seconds\n", millisecondsTransfers);
 
     elapsed_time_CPU = (tv2.tv_sec - tv1.tv_sec) + (tv2.tv_nsec - tv1.tv_nsec) / 1e9;
     printf("CPU Execution time: %lf seconds\n", elapsed_time_CPU);
@@ -57,7 +40,6 @@ int main(int argc, char *argv[]){
 
 bool run_cpu_gray_test(PGM_IMG img_in, char *out_filename)
 {
-    unsigned int timer = 0;
     PGM_IMG img_obuf;
     
     
@@ -74,7 +56,7 @@ bool run_cpu_gray_test(PGM_IMG img_in, char *out_filename)
 
 bool run_GPU_gray_test(PGM_IMG img_in, char *out_filename)
 {
-    unsigned int timer = 0;
+    // unsigned int timer = 0;
     PGM_IMG img_obuf;
     
     
@@ -90,7 +72,7 @@ bool run_GPU_gray_test(PGM_IMG img_in, char *out_filename)
 }
 
 bool run_gpu_gray_test(PGM_IMG img_in, char *out_filename)  {
-    unsigned int timer = 0;
+    // unsigned int timer = 0;
     PGM_IMG img_obuf;
     
     

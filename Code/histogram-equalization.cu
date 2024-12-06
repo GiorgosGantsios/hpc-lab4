@@ -20,8 +20,7 @@ void histogram(int * hist_out, unsigned char * img_in, int img_size, int nbr_bin
     
 }
 
-void histogram_equalization(unsigned char * img_out, unsigned char * img_in, 
-                            int * hist_in, int img_size, int nbr_bin) {
+void histogram_equalization(unsigned char * img_out, unsigned char * img_in, int * hist_in, int img_size, int nbr_bin) {
     int *lut = (int *)malloc(sizeof(int)*nbr_bin);
     int i, cdf, min, d, index;
 
@@ -57,34 +56,72 @@ void histogram_equalization(unsigned char * img_out, unsigned char * img_in,
     for(i = 0; i < img_size; i++) {
         img_out[i] = (unsigned char)lut[img_in[i]];
     }
+    free(lut);
 }
 
 __global__ void histogramGPU(int * hist_out, unsigned char * img_in, int imageW, int imageH) {
+    extern __shared__ int sharedMemory[];
     int index = blockIdx.x*blockDim.x + threadIdx.x;
+    int tx = threadIdx.x;
+
+    if (tx < 256) {
+        sharedMemory[tx] = 0;
+    }
+
+    __syncthreads();
 
     // Constructs the Histogram Vector
     if (index < imageH*imageW)  {
-        atomicAdd(&hist_out[img_in[index]], 1);
+        atomicAdd(&sharedMemory[img_in[index]], 1);
+        __syncthreads();
+        atomicAdd(&hist_out[tx], sharedMemory[tx]);
     }
     __syncthreads();
 }
+
+texture<int, cudaTextureType1D, cudaReadModeElementType> texRef; // Bind the 1D texture
 
 __global__ void histogram_equalization_GPU(unsigned char * img_out, unsigned char * img_in, int * lut, int imageW, int imageH) {
     int index = blockIdx.x*blockDim.x + threadIdx.x;
     int y = index / imageW; // row
     int x = index % imageW; // col
-
+    
     /* Get the result image */
-    img_out[y*imageW+x] = (unsigned char)lut[img_in[y*imageW+x]];
+
+    if ((y * imageW + x) < imageW * imageH)  {
+        img_out[index] = tex1Dfetch(texRef, img_in[index]);
+    }
     //printf("ABLACK: %d\n", img_out[y*imageW+x]);
 
 }
 
-void histogram_equalization_prep(unsigned char * img_out, unsigned char * img_in, int * hist_in, int imageW, int imageH, int nbr_bin) {
+// __global__ void histogram_equalization_GPU(unsigned char * img_out, unsigned char * img_in, int * lut, int imageW, int imageH) {
+//     int index = blockIdx.x*blockDim.x + threadIdx.x;
+//     int y = index / imageW; // row
+//     int x = index % imageW; // col
+//     extern __shared__ unsigned char cuChulain[];
+//     /* Get the result image */
+
+//     if (threadIdx.x < 256)  {
+//         cuChulain[threadIdx.x] =  lut[threadIdx.x];
+//     }
+    
+//     __syncthreads();
+
+//     if ((y * imageW + x) < imageW * imageH)  {
+//         img_out[y*imageW+x] = cuChulain[img_in[y*imageW+x]];
+//     }
+//     __syncthreads();
+//     //printf("ABLACK: %d\n", img_out[y*imageW+x]);
+
+// }
+
+int histogram_equalization_prep(unsigned char * img_out, unsigned char * img_in, int * hist_in, int imageW, int imageH, int nbr_bin, unsigned char * d_ImgIn) {
     int *lut = (int *)malloc(sizeof(int)*nbr_bin);
     int i, cdf, min, d, index, *d_lut;
     int img_size = imageW * imageH;
-    unsigned char * d_ImgIn;
+    float millisecondsTransfers = 0;
+    cudaEvent_t startCuda, stopCuda;
 
     /* Construct the LUT by calculating the CDF */
     cdf = 0;
@@ -107,29 +144,42 @@ void histogram_equalization_prep(unsigned char * img_out, unsigned char * img_in
         cdf += hist_in[i];
         lut[i] = (int)(((float)cdf - min)*255/d + 0.5);
     }
-    printf("Potential BLACK: \n");
     for(i = 0; i < nbr_bin; i++)  {
         if(lut[i] > 255) {
-            printf("BLACK: %d\n", i);
+            // printf("BLACK: %d\n", i);
             lut[i] = 255;
         }
     }
 
-    cudaMalloc((void **)&d_ImgIn, img_size * sizeof(unsigned char));
+    // cudaMalloc((void **)&d_ImgIn, img_size * sizeof(unsigned char));
 
-    cudaMemcpy(d_ImgIn, img_in, img_size * sizeof(unsigned char), cudaMemcpyHostToDevice);  // Copy data from host to device
+    // cudaMemcpy(d_ImgIn, img_in, img_size * sizeof(unsigned char), cudaMemcpyHostToDevice);  // Copy data from host to device
+
+    cudaEventCreate(&startCuda);
+    cudaEventCreate(&stopCuda);
+
+    cudaEventRecord(startCuda, 0);
 
     cudaMalloc((void **)&d_lut, sizeof(int)*nbr_bin);
 
     cudaMemcpy(d_lut, lut, sizeof(int)*nbr_bin, cudaMemcpyHostToDevice);  // Copy data from host to device
 
+    cudaBindTexture(0, texRef, d_lut, 256 * sizeof(int));
 
-    cudaMemcpy(d_lut, lut, sizeof(int)*nbr_bin, cudaMemcpyHostToDevice);  // Copy data from host to device
-
-    histogram_equalization_GPU<<<(img_size/1024)+1, 1024>>>(img_out, d_ImgIn, d_lut, imageW, imageH);
+    // histogram_equalization_GPU<<<(img_size/256)+1, 256, 256 * sizeof(unsigned char)>>>(img_out, d_ImgIn, d_lut, imageW, imageH);
+    histogram_equalization_GPU<<<(img_size/256)+1, 256>>>(img_out, d_ImgIn, d_lut, imageW, imageH);
     cudaDeviceSynchronize(); 
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) {
         printf("CUDA kernel launch error: %s\n", cudaGetErrorString(err));
     }
+    cudaFree(d_lut);
+
+    cudaEventRecord(stopCuda, 0);
+    cudaEventSynchronize(stopCuda);
+    cudaUnbindTexture(texRef); // Unbind texture memory
+    cudaEventElapsedTime(&millisecondsTransfers, startCuda, stopCuda);
+
+    free(lut);
+    return(millisecondsTransfers);
 }
