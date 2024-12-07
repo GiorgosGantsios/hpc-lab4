@@ -186,7 +186,7 @@ int histogram_equalization_prep(unsigned char * img_out, unsigned char * img_in,
     cudaDeviceSynchronize(); 
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) {
-        printf("CUDAKap kernel launch error: %s\n", cudaGetErrorString(err));
+        printf("####################CUDAKap kernel launch error: %s\n", cudaGetErrorString(err));
     }
     cudaFree(d_lut);
 
