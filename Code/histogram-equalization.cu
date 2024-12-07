@@ -59,7 +59,7 @@ void histogram_equalization(unsigned char * img_out, unsigned char * img_in, int
     free(lut);
 }
 
-__global__ void histogramGPU(int * hist_out, unsigned char * img_in, int imageW, int imageH) {
+__global__ void histogramGPU(int * hist_out, unsigned char * img_in, int image_size) {
     extern __shared__ int sharedMemory[];
     int index = blockIdx.x*blockDim.x + threadIdx.x;
     int tx = threadIdx.x;
@@ -70,7 +70,7 @@ __global__ void histogramGPU(int * hist_out, unsigned char * img_in, int imageW,
 
     __syncthreads();
 
-    for (int i = index; i < imageH*imageW; i += blockDim.x*gridDim.x)  {
+    for (int i = index; i < image_size; i += blockDim.x*gridDim.x)  {
         atomicAdd(&sharedMemory[img_in[i]], 1);
         __syncthreads();
     }
@@ -186,7 +186,7 @@ int histogram_equalization_prep(unsigned char * img_out, unsigned char * img_in,
     cudaDeviceSynchronize(); 
     cudaError_t err = cudaGetLastError();
     if (err != cudaSuccess) {
-        printf("####################CUDAKap kernel launch error: %s\n", cudaGetErrorString(err));
+        printf("CUDAKap kernel launch error: %s\n", cudaGetErrorString(err));
     }
     cudaFree(d_lut);
 
