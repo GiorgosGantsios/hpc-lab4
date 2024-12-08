@@ -59,7 +59,7 @@ void histogram_equalization(unsigned char * img_out, unsigned char * img_in, int
     free(lut);
 }
 
-__global__ void histogramGPU(int * hist_out, unsigned char * img_in, int imageW, int imageH) {
+/*__global__ void histogramGPU(int * hist_out, unsigned char * img_in, int imageW, int imageH) {
     extern __shared__ int sharedMemory[];
     int index = blockIdx.x*blockDim.x + threadIdx.x;
     int tx = threadIdx.x;
@@ -77,9 +77,28 @@ __global__ void histogramGPU(int * hist_out, unsigned char * img_in, int imageW,
         atomicAdd(&hist_out[tx], sharedMemory[tx]);
     }
     __syncthreads();
+}*/
+
+__global__ void histogramGPU(int * hist_out, unsigned char * img_in, int imageW, int imageH) {
+    //extern __shared__ int sharedMemory[];
+    int index = blockIdx.x*blockDim.x + threadIdx.x;
+    //int tx = threadIdx.x;
+
+    // if (tx < 256) {
+    //     sharedMemory[tx] = 0;
+    // }
+
+    //__syncthreads();
+
+    // Constructs the Histogram Vector
+    if (index < imageH*imageW)  {
+        atomicAdd(&hist_out[img_in[index]], 1);
+        __syncthreads();
+    }
+    __syncthreads();
 }
 
-texture<int, cudaTextureType1D, cudaReadModeElementType> texRef; // Bind the 1D texture
+//texture<int, cudaTextureType1D, cudaReadModeElementType> texRef; // Bind the 1D texture
 
 __global__ void histogram_equalization_GPU(unsigned char * img_out, unsigned char * img_in, int * lut, int imageW, int imageH) {
     int index = blockIdx.x*blockDim.x + threadIdx.x;
@@ -89,32 +108,11 @@ __global__ void histogram_equalization_GPU(unsigned char * img_out, unsigned cha
     /* Get the result image */
 
     if ((y * imageW + x) < imageW * imageH)  {
-        img_out[index] = tex1Dfetch(texRef, img_in[index]);
+        img_out[index] = lut[img_in[index]];
     }
     //printf("ABLACK: %d\n", img_out[y*imageW+x]);
 
 }
-
-// __global__ void histogram_equalization_GPU(unsigned char * img_out, unsigned char * img_in, int * lut, int imageW, int imageH) {
-//     int index = blockIdx.x*blockDim.x + threadIdx.x;
-//     int y = index / imageW; // row
-//     int x = index % imageW; // col
-//     extern __shared__ unsigned char cuChulain[];
-//     /* Get the result image */
-
-//     if (threadIdx.x < 256)  {
-//         cuChulain[threadIdx.x] =  lut[threadIdx.x];
-//     }
-    
-//     __syncthreads();
-
-//     if ((y * imageW + x) < imageW * imageH)  {
-//         img_out[y*imageW+x] = cuChulain[img_in[y*imageW+x]];
-//     }
-//     __syncthreads();
-//     //printf("ABLACK: %d\n", img_out[y*imageW+x]);
-
-// }
 
 int histogram_equalization_prep(unsigned char * img_out, unsigned char * img_in, int * hist_in, int imageW, int imageH, int nbr_bin, unsigned char * d_ImgIn) {
     int *lut = (int *)malloc(sizeof(int)*nbr_bin);
@@ -164,7 +162,7 @@ int histogram_equalization_prep(unsigned char * img_out, unsigned char * img_in,
 
     cudaMemcpy(d_lut, lut, sizeof(int)*nbr_bin, cudaMemcpyHostToDevice);  // Copy data from host to device
 
-    cudaBindTexture(0, texRef, d_lut, 256 * sizeof(int));
+    //cudaBindTexture(0, texRef, d_lut, 256 * sizeof(int));
 
     // histogram_equalization_GPU<<<(img_size/256)+1, 256, 256 * sizeof(unsigned char)>>>(img_out, d_ImgIn, d_lut, imageW, imageH);
     histogram_equalization_GPU<<<(img_size/256)+1, 256>>>(img_out, d_ImgIn, d_lut, imageW, imageH);
@@ -177,7 +175,7 @@ int histogram_equalization_prep(unsigned char * img_out, unsigned char * img_in,
 
     cudaEventRecord(stopCuda, 0);
     cudaEventSynchronize(stopCuda);
-    cudaUnbindTexture(texRef); // Unbind texture memory
+    //cudaUnbindTexture(texRef); // Unbind texture memory
     cudaEventElapsedTime(&millisecondsTransfers, startCuda, stopCuda);
 
     free(lut);
