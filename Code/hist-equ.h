@@ -24,4 +24,4 @@ __global__ void histogram_equalization_GPU(unsigned char * img_out, unsigned cha
 PGM_IMG contrast_enhancement_g(PGM_IMG img_in);
 PGM_IMG contrast_enhancement_GPU(PGM_IMG img_in);
 
-#endif
+#endif  
