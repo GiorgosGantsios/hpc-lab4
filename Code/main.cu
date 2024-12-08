@@ -49,7 +49,7 @@ PGM_IMG read_pgm(const char * path){
     
     
     PGM_IMG result;
-    int v_max;//, i;
+    int v_max;
     in_file = fopen(path, "r");
     if (in_file == NULL){
         printf("Input file not found!\n");

@@ -40,9 +40,10 @@ int histogram_equalization_prep(unsigned char * img_out, unsigned char * img_in,
     int i, cdf, min, d, index, *d_lut;
     int img_size = imageW * imageH;
     float millisecondsTransfers = 0;
+    int extra_block = ((imageH*imageW)%256 != 0);
     cudaEvent_t startCuda, stopCuda;
 
-    /* Construct the LUT by calculating the CDF */
+    // Construct the LUT by calculating the CDF
     cdf = 0;
     min = 0;
     i = 0;
@@ -81,7 +82,7 @@ int histogram_equalization_prep(unsigned char * img_out, unsigned char * img_in,
         return(-1);
     }
 
-    cudaMemcpy(d_lut, lut, sizeof(int)*nbr_bin, cudaMemcpyHostToDevice);  // Copy data from host to device
+    cudaMemcpy(d_lut, lut, sizeof(int)*nbr_bin, cudaMemcpyHostToDevice);
     if (err != cudaSuccess) {
         fprintf(stderr, "CUDA Memcopy error: %s\n", cudaGetErrorString(err));
         if (d_lut) cudaFree(d_lut);
@@ -91,7 +92,7 @@ int histogram_equalization_prep(unsigned char * img_out, unsigned char * img_in,
 
     cudaBindTexture(0, texRef, d_lut, 256 * sizeof(int));
 
-    histogram_equalization_GPU<<<(img_size/256)+1, 256, 256* sizeof(int)>>>(img_out, d_ImgIn, d_lut, imageW, imageH);
+    histogram_equalization_GPU<<<(img_size/1024)+extra_block, 1024, 256* sizeof(int)>>>(img_out, d_ImgIn, d_lut, imageW, imageH);
     cudaDeviceSynchronize(); 
     err = cudaGetLastError();
     if (err != cudaSuccess) {
@@ -104,7 +105,7 @@ int histogram_equalization_prep(unsigned char * img_out, unsigned char * img_in,
 
     cudaEventRecord(stopCuda, 0);
     cudaEventSynchronize(stopCuda);
-    cudaUnbindTexture(texRef); // Unbind texture memory
+    cudaUnbindTexture(texRef);
     cudaEventElapsedTime(&millisecondsTransfers, startCuda, stopCuda);
 
     free(lut);
