@@ -19,19 +19,19 @@ int main(int argc, char *argv[]){
 	
     printf("Running contrast enhancement for gray-scale images.\n");
     img_ibuf_g = read_pgm(argv[1]);
-    clock_gettime(CLOCK_MONOTONIC_RAW, &tv1);
-    result = run_cpu_gray_test(img_ibuf_g, argv[2]);
-    if (result == false)  {
-        free_pgm(img_ibuf_g);
-        return(1);
-    }
-    clock_gettime(CLOCK_MONOTONIC_RAW, &tv2);
+    // clock_gettime(CLOCK_MONOTONIC_RAW, &tv1);
+    // result = run_cpu_gray_test(img_ibuf_g, argv[2]);
+    // if (result == false)  {
+    //     free_pgm(img_ibuf_g);
+    //     return(1);
+    // }
+    // clock_gettime(CLOCK_MONOTONIC_RAW, &tv2);
 
     result = run_GPU_gray_test(img_ibuf_g, argv[2]);
 
     elapsed_time_CPU = (tv2.tv_sec - tv1.tv_sec) + (tv2.tv_nsec - tv1.tv_nsec) / 1e9;
     printf("CPU Execution time: %lf seconds\n", elapsed_time_CPU);
-    free_pgm(img_ibuf_g);
+    free_gpu_pgm(img_ibuf_g);
 
 	return 0;
 }
@@ -67,7 +67,7 @@ bool run_GPU_gray_test(PGM_IMG img_in, char *out_filename)
         return(false);
     }
     write_pgm(img_obuf, out_filename);
-    free_pgm(img_obuf);
+    free_gpu_pgm(img_obuf);
     return(true);
 }
 
@@ -107,7 +107,8 @@ PGM_IMG read_pgm(const char * path){
     printf("Image size: %d x %d\n", result.w, result.h);
     
 
-    result.img = (unsigned char *)malloc(result.w * result.h * sizeof(unsigned char));
+    cudaMallocManaged(&result.img, result.w * result.h * sizeof(unsigned char));
+    //result.img = (unsigned char *)malloc(result.w * result.h * sizeof(unsigned char));
 
         
     fread(result.img,sizeof(unsigned char), result.w*result.h, in_file);    
@@ -130,3 +131,7 @@ void free_pgm(PGM_IMG img)
     free(img.img);
 }
 
+void free_gpu_pgm(PGM_IMG img)
+{
+    cudaFree(img.img);
+}

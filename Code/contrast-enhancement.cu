@@ -14,9 +14,9 @@ PGM_IMG contrast_enhancement_g(PGM_IMG img_in)  {
     histogram(hist, img_in.img, img_in.h * img_in.w, 256);
     histogram_equalization(result.img,img_in.img,hist,result.w*result.h, 256);
 
-    for(int i = 0;i < 256; i++) {
+    /*for(int i = 0;i < 256; i++) {
         printf("%d ", hist[i]);
-    }
+    }*/
 
     return result;
 }
@@ -29,7 +29,7 @@ PGM_IMG contrast_enhancement_GPU(PGM_IMG img_in)  {
     //int hist[256];
     int t_hist[256], t_hist0[128], t_hist1[128];
     int *d_hist, *A0_hist, *A1_hist, *A2_hist, *A3_hist, *A4_hist, *A5_hist, *A6_hist, *A7_hist;
-    unsigned char * d_ImgIn;
+    // unsigned char * d_ImgIn;
     unsigned char * img_A0,* img_A1,* img_A2,* img_A3,* img_A4,* img_A5,* img_A6,* img_A7, *img_A[2];
     int SegSize = (img_in.w * img_in.h)/2;
     int t0_hist[256], t1_hist[256];
@@ -40,6 +40,7 @@ PGM_IMG contrast_enhancement_GPU(PGM_IMG img_in)  {
     result.h = img_in.h;
     result.img = (unsigned char *)malloc(result.w * result.h * sizeof(unsigned char));
 
+    cudaMallocManaged(&gpuResult.img, result.w * result.h * sizeof(unsigned char));
     gpuResult.w = img_in.w;
     gpuResult.h = img_in.h;
 
@@ -51,19 +52,19 @@ PGM_IMG contrast_enhancement_GPU(PGM_IMG img_in)  {
     cudaEventRecord(startCuda);
 
 
-    cudaError_t err = cudaMalloc((void **)&gpuResult.img, gpuResult.w * gpuResult.h * sizeof(unsigned char));
+    /*cudaError_t err = cudaMalloc((void **)&gpuResult.img, gpuResult.w * gpuResult.h * sizeof(unsigned char));
     if (err != cudaSuccess) {
         fprintf(stderr, "CUDA malloc error: %s\n", cudaGetErrorString(err));
         if (gpuResult.img) cudaFree(gpuResult.img);
         return(gpuResult);
-    }
-    err = cudaMalloc((void **)&d_ImgIn, gpuResult.w * gpuResult.h * sizeof(unsigned char));
-    if (err != cudaSuccess) {
-        fprintf(stderr, "CUDA malloc error: %s\n", cudaGetErrorString(err));
-        if (gpuResult.img) cudaFree(gpuResult.img);
-        return(gpuResult);
-    }
-    err = cudaMalloc((void**)&d_hist, 256 * sizeof(int));  // Allocate memory on the GPU
+    }*/
+    // cudaError_t err = cudaMalloc((void **)&d_ImgIn, gpuResult.w * gpuResult.h * sizeof(unsigned char));
+    // if (err != cudaSuccess) {
+    //     fprintf(stderr, "CUDA malloc error: %s\n", cudaGetErrorString(err));
+    //     if (gpuResult.img) cudaFree(gpuResult.img);
+    //     return(gpuResult);
+    // }
+    cudaError_t err = cudaMalloc((void**)&d_hist, 256 * sizeof(int));  // Allocate memory on the GPU
     if (err != cudaSuccess) {
         fprintf(stderr, "CUDA malloc error: %s\n", cudaGetErrorString(err));
         if (gpuResult.img) cudaFree(gpuResult.img);
@@ -88,9 +89,9 @@ PGM_IMG contrast_enhancement_GPU(PGM_IMG img_in)  {
     for (int i=0; i < 2; i++)  {
         int offset = i * SegSize;
         cudaStreamCreate(&stream[i]);
-        cudaMemcpyAsync(img_A[i], img_in.img+offset, SegSize*sizeof(unsigned char), cudaMemcpyHostToDevice, stream[i]);
+        //cudaMemcpyAsync(img_A[i], img_in.img+offset, SegSize*sizeof(unsigned char), cudaMemcpyHostToDevice, stream[i]);
 
-        histogramGPU<<<((SegSize)/256), 256, 256*sizeof(int), stream[i] >>>(d_hist, img_A[i], SegSize);
+        histogramGPU<<<((SegSize)/256), 256, 256*sizeof(int), stream[i] >>>(d_hist, img_in.img+offset, SegSize);
 
         cudaMemcpyAsync(t_hist, d_hist, 256*sizeof(int), cudaMemcpyDeviceToHost, stream[i]);
     }
@@ -122,18 +123,18 @@ PGM_IMG contrast_enhancement_GPU(PGM_IMG img_in)  {
         int offset = i * SegSize;
         cudaMemcpyAsync(lut_d, lut, 256*sizeof(int), cudaMemcpyHostToDevice, stream[i]);
 
-        histogram_equalization_GPU<<<((SegSize)/256), 256, 256*sizeof(int), stream[i]>>>(gpuResult.img + offset, img_A[i], lut_d, img_in.w, img_in.h/2);
+        histogram_equalization_GPU<<<((SegSize)/256), 256, 256*sizeof(int), stream[i]>>>(gpuResult.img + offset, img_in.img+offset, lut_d, img_in.w, img_in.h/2);
 
-        cudaMemcpyAsync(result.img + offset, gpuResult.img + offset, ((gpuResult.w * gpuResult.h)/2) * sizeof(unsigned char), cudaMemcpyDeviceToHost, stream[i]);
+        //cudaMemcpyAsync(result.img + offset, gpuResult.img + offset, ((gpuResult.w * gpuResult.h)/2) * sizeof(unsigned char), cudaMemcpyDeviceToHost, stream[i]);
     }
 
-    for(int i = 0;i < 256; i++) {
+    /*for(int i = 0;i < 256; i++) {
         printf("%d ", t_hist[i]);
-    }
+    }*/
 
-    cudaFree(d_ImgIn);  
+    //cudaFree(d_ImgIn);  
     cudaFree(d_hist);
-    cudaFree(gpuResult.img);
+    //cudaFree(gpuResult.img);
 
     cudaEventRecord(stopCuda1, 0);
     cudaEventSynchronize(stopCuda1);
@@ -143,5 +144,5 @@ PGM_IMG contrast_enhancement_GPU(PGM_IMG img_in)  {
 
     printf("\nGPU Execution time: %lf seconds\n", millisecondsTransfers/1000.0);
 
-    return result;
+    return gpuResult;
 }
