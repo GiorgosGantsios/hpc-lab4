@@ -2,18 +2,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include "hist-equ.h"
-/*#define CHECK_CUDA_ERROR(call) \
-    do { \
-        cudaError_t err = call; \
-        if (err != cudaSuccess) { \
-            fprintf(stderr, "CUDA error in %s at line %d: %s\n", __FILE__, __LINE__, cudaGetErrorString(err)); \
-            cleanup();
-        } \
-    } while (0)*/
-
-/*void cleanup (void * gpuResult, )  {
-    cudaFree(gpuResult);
-}*/
 
 PGM_IMG contrast_enhancement_g(PGM_IMG img_in)  {
     PGM_IMG result;
@@ -26,10 +14,6 @@ PGM_IMG contrast_enhancement_g(PGM_IMG img_in)  {
     histogram(hist, img_in.img, img_in.h * img_in.w, 256);
     histogram_equalization(result.img,img_in.img,hist,result.w*result.h, 256);
 
-    // printf("CPU\n");
-    // for (int i = 0; i < 256; i++)  {
-    //     printf(" %d",hist[i]);
-    // }
     return result;
 }
 

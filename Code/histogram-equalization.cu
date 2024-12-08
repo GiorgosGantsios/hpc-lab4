@@ -59,7 +59,7 @@ void histogram_equalization(unsigned char * img_out, unsigned char * img_in, int
     free(lut);
 }
 
-__global__ void histogramGPU(int * hist_out, unsigned char * img_in, int imageW, int imageH) {
+/*__global__ void histogramGPU(int * hist_out, unsigned char * img_in, int imageW, int imageH) {
     extern __shared__ int sharedMemory[];
     int index = blockIdx.x*blockDim.x + threadIdx.x;
     int tx = threadIdx.x;
@@ -75,6 +75,24 @@ __global__ void histogramGPU(int * hist_out, unsigned char * img_in, int imageW,
         atomicAdd(&sharedMemory[img_in[index]], 1);
         __syncthreads();
         atomicAdd(&hist_out[tx], sharedMemory[tx]);
+    }
+    __syncthreads();
+}*/
+__global__ void histogramGPU(int * hist_out, unsigned char * img_in, int imageW, int imageH) {
+    //extern __shared__ int sharedMemory[];
+    int index = blockIdx.x*blockDim.x + threadIdx.x;
+    //int tx = threadIdx.x;
+
+    // if (tx < 256) {
+    //     sharedMemory[tx] = 0;
+    // }
+
+    //__syncthreads();
+
+    // Constructs the Histogram Vector
+    if (index < imageH*imageW)  {
+        atomicAdd(&hist_out[img_in[index]], 1);
+        __syncthreads();
     }
     __syncthreads();
 }
@@ -94,27 +112,6 @@ __global__ void histogram_equalization_GPU(unsigned char * img_out, unsigned cha
     //printf("ABLACK: %d\n", img_out[y*imageW+x]);
 
 }
-
-// __global__ void histogram_equalization_GPU(unsigned char * img_out, unsigned char * img_in, int * lut, int imageW, int imageH) {
-//     int index = blockIdx.x*blockDim.x + threadIdx.x;
-//     int y = index / imageW; // row
-//     int x = index % imageW; // col
-//     extern __shared__ unsigned char cuChulain[];
-//     /* Get the result image */
-
-//     if (threadIdx.x < 256)  {
-//         cuChulain[threadIdx.x] =  lut[threadIdx.x];
-//     }
-    
-//     __syncthreads();
-
-//     if ((y * imageW + x) < imageW * imageH)  {
-//         img_out[y*imageW+x] = cuChulain[img_in[y*imageW+x]];
-//     }
-//     __syncthreads();
-//     //printf("ABLACK: %d\n", img_out[y*imageW+x]);
-
-// }
 
 int histogram_equalization_prep(unsigned char * img_out, unsigned char * img_in, int * hist_in, int imageW, int imageH, int nbr_bin, unsigned char * d_ImgIn) {
     int *lut = (int *)malloc(sizeof(int)*nbr_bin);
