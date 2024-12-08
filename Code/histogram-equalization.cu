@@ -70,19 +70,19 @@ __global__ void histogramGPU(int * hist_out, unsigned char * img_in, int imageW,
 
     __syncthreads();
 
-    for (int i = index; i < imageH*imageW; i += blockDim.x*gridDim.x)  {
-        atomicAdd(&sharedMemory[img_in[i]], 1);
-        __syncthreads();
-    }
-    atomicAdd(&hist_out[tx], sharedMemory[tx]);
-    __syncthreads();
-    // Constructs the Histogram Vector
-    // if (index < imageH*imageW)  {
-    //     atomicAdd(&sharedMemory[img_in[index]], 1);
+    // for (int i = index; i < imageH*imageW; i += blockDim.x*gridDim.x)  {
+    //     atomicAdd(&sharedMemory[img_in[i]], 1);
     //     __syncthreads();
-    //     atomicAdd(&hist_out[tx], sharedMemory[tx]);
     // }
+    // atomicAdd(&hist_out[tx], sharedMemory[tx]);
     // __syncthreads();
+    // Constructs the Histogram Vector
+    if (index < imageH*imageW)  {
+        atomicAdd(&sharedMemory[img_in[index]], 1);
+        __syncthreads();
+        atomicAdd(&hist_out[tx], sharedMemory[tx]);
+    }
+    __syncthreads();
 }
 
 
