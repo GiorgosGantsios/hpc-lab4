@@ -12,7 +12,6 @@ typedef struct{
 PGM_IMG read_pgm(const char * path);
 void write_pgm(PGM_IMG img, const char * path);
 void free_pgm(PGM_IMG img);
-void free_gpu_pgm(PGM_IMG img);
 
 void histogram(int * hist_out, unsigned char * img_in, int img_size, int nbr_bin);
 void histogram_equalization(unsigned char * img_out, unsigned char * img_in, int * hist_in, int img_size, int nbr_bin);

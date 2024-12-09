@@ -19,13 +19,13 @@ int main(int argc, char *argv[]){
 	
     printf("Running contrast enhancement for gray-scale images.\n");
     img_ibuf_g = read_pgm(argv[1]);
-    // clock_gettime(CLOCK_MONOTONIC_RAW, &tv1);
-    // result = run_cpu_gray_test(img_ibuf_g, argv[2]);
-    // if (result == false)  {
-    //     free_pgm(img_ibuf_g);
-    //     return(1);
-    // }
-    // clock_gettime(CLOCK_MONOTONIC_RAW, &tv2);
+    /*clock_gettime(CLOCK_MONOTONIC_RAW, &tv1);
+    result = run_cpu_gray_test(img_ibuf_g, argv[2]);
+    if (result == false)  {
+        free_pgm(img_ibuf_g);
+        return(1);
+    }
+    clock_gettime(CLOCK_MONOTONIC_RAW, &tv2);*/
 
     result = run_GPU_gray_test(img_ibuf_g, argv[2]);
 
@@ -41,7 +41,8 @@ int main(int argc, char *argv[]){
 bool run_cpu_gray_test(PGM_IMG img_in, char *out_filename)
 {
     PGM_IMG img_obuf;
-
+    
+    
     printf("Starting CPU processing...\n");
     img_obuf = contrast_enhancement_g(img_in);
     if (img_obuf.img == NULL)  {
@@ -66,7 +67,7 @@ bool run_GPU_gray_test(PGM_IMG img_in, char *out_filename)
         return(false);
     }
     write_pgm(img_obuf, out_filename);
-    free_gpu_pgm(img_obuf);
+    free_pgm(img_obuf);
     return(true);
 }
 
@@ -81,9 +82,8 @@ bool run_gpu_gray_test(PGM_IMG img_in, char *out_filename)  {
         //cudaFree(img_in);
         return(false);
     }
-    cudaDeviceSynchronize(); 
     write_pgm(img_obuf, out_filename);
-    free_gpu_pgm(img_obuf);
+    free_pgm(img_obuf);
     return(true);
 }
 
@@ -106,9 +106,9 @@ PGM_IMG read_pgm(const char * path){
     fscanf(in_file, "%d\n",&v_max);
     printf("Image size: %d x %d\n", result.w, result.h);
     
-    cudaMallocManaged(&result.img, result.w * result.h * sizeof(unsigned char));
-    //result.img = (unsigned char *)malloc(result.w * result.h * sizeof(unsigned char));
 
+    result.img = (unsigned char *)malloc(result.w * result.h * sizeof(unsigned char));
+    
         
     fread(result.img,sizeof(unsigned char), result.w*result.h, in_file);    
     fclose(in_file);
@@ -127,10 +127,5 @@ void write_pgm(PGM_IMG img, const char * path){
 
 void free_pgm(PGM_IMG img)
 {
-    cudaFree(img.img);
-}
-
-void free_gpu_pgm(PGM_IMG img)
-{
-    cudaFree(img.img);
+    cudaFreeHost(img.img);
 }
