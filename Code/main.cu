@@ -106,8 +106,8 @@ PGM_IMG read_pgm(const char * path){
     fscanf(in_file, "%d\n",&v_max);
     printf("Image size: %d x %d\n", result.w, result.h);
     
-
-    result.img = (unsigned char *)malloc(result.w * result.h * sizeof(unsigned char));
+    cudaHostAlloc((void**)&result.img, result.w * result.h * sizeof(unsigned char), cudaHostAllocMapped);
+    //result.img = (unsigned char *)malloc(result.w * result.h * sizeof(unsigned char));
     
         
     fread(result.img,sizeof(unsigned char), result.w*result.h, in_file);    

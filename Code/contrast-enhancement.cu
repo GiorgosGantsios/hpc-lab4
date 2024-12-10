@@ -73,7 +73,7 @@ PGM_IMG contrast_enhancement_GPU(PGM_IMG img_in)  {
         return(gpuResult);
     }
 
-    err = cudaMemcpy(d_ImgIn, img_in.img, gpuResult.w * gpuResult.h * sizeof(unsigned char), cudaMemcpyHostToDevice);  // Copy data from host to device
+    //err = cudaMemcpy(d_ImgIn, img_in.img, gpuResult.w * gpuResult.h * sizeof(unsigned char), cudaMemcpyHostToDevice);  // Copy data from host to device
     
     if (err != cudaSuccess) {
         fprintf(stderr, "CUDA malloc error: %s\n", cudaGetErrorString(err));
@@ -81,7 +81,7 @@ PGM_IMG contrast_enhancement_GPU(PGM_IMG img_in)  {
         return(gpuResult);
     }
 
-    histogramGPU<<<((gpuResult.h*gpuResult.w)/256)+1, 256, 256*sizeof(int) >>>(d_hist, d_ImgIn, gpuResult.w, gpuResult.h);
+    histogramGPU<<<((gpuResult.h*gpuResult.w)/256)+1, 256, 256*sizeof(int) >>>(d_hist, img_in.img, gpuResult.w, gpuResult.h);
 
     cudaDeviceSynchronize(); 
     err = cudaGetLastError();
@@ -96,13 +96,13 @@ PGM_IMG contrast_enhancement_GPU(PGM_IMG img_in)  {
     cudaEventElapsedTime(&millisecondsTransfers, startCuda, stopCuda);
 
     printf("\nGPU1 Execution time: %lf seconds\n", millisecondsTransfers/1000.0);
-    time = histogram_equalization_prep(gpuResult.img, img_in.img, t_hist, gpuResult.w, gpuResult.h, 256, d_ImgIn);
+    time = histogram_equalization_prep(result.img, img_in.img, t_hist, gpuResult.w, gpuResult.h, 256, img_in.img);
 
     time += millisecondsTransfers;
 
     cudaEventRecord(startCuda, 0);
 
-    err = cudaMemcpy(result.img, gpuResult.img, gpuResult.w * gpuResult.h * sizeof(unsigned char), cudaMemcpyDeviceToHost);  // Copy data from host to device
+    //err = cudaMemcpy(result.img, gpuResult.img, gpuResult.w * gpuResult.h * sizeof(unsigned char), cudaMemcpyDeviceToHost);  // Copy data from host to device
 
     cudaFree(d_ImgIn);  
     cudaFree(d_hist);

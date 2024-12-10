@@ -110,7 +110,7 @@ int histogram_equalization_prep(unsigned char * img_out, unsigned char * img_in,
     cudaError_t err;
     // int *lut = (int *)malloc(sizeof(int)*nbr_bin);
 
-    err = cudaHostAlloc((void**)&lut, nbr_bin*sizeof(int), cudaHostAllocDefault);
+    err = cudaHostAlloc((void**)&lut, nbr_bin*sizeof(int), cudaHostAllocMapped);
     if (err != cudaSuccess) {
         fprintf(stderr, "CUDA Host Alloc error: %s\n", cudaGetErrorString(err));
         if (lut) cudaFreeHost(lut);
@@ -156,11 +156,11 @@ int histogram_equalization_prep(unsigned char * img_out, unsigned char * img_in,
 
     cudaMalloc((void **)&d_lut, sizeof(int)*nbr_bin);
 
-    cudaMemcpy(d_lut, lut, sizeof(int)*nbr_bin, cudaMemcpyHostToDevice);  // Copy data from host to device
+    //cudaMemcpy(d_lut, lut, sizeof(int)*nbr_bin, cudaMemcpyHostToDevice);  // Copy data from host to device
 
     // cudaBindTexture(0, texRef, d_lut, 256 * sizeof(int));
 
-    histogram_equalization_GPU<<<(img_size/256)+1, 256, 256 * sizeof(int)>>>(img_out, d_ImgIn, d_lut, imageW, imageH);
+    histogram_equalization_GPU<<<(img_size/256)+1, 256, 256 * sizeof(int)>>>(img_out, d_ImgIn, lut, imageW, imageH);
     cudaDeviceSynchronize(); 
     err = cudaGetLastError();
     if (err != cudaSuccess) {
